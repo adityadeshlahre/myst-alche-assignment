@@ -29,6 +29,7 @@ export default function Home() {
   const [events, setEvents] = useState<TraceEvent[]>([]);
   const [connectionState, setConnectionState] = useState<ConnectionState>("disconnected");
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [autoSuiteRunning, setAutoSuiteRunning] = useState(false);
 
   const handleMessage = useCallback((msg: ServerMessage) => {
     setEvents((prev) => [...prev, toTraceEvent(msg)]);
@@ -77,6 +78,29 @@ export default function Home() {
     [send],
   );
 
+  const handleAutoSuite = useCallback(async () => {
+    if (autoSuiteRunning) return;
+    setAutoSuiteRunning(true);
+
+    const triggers = [
+      "hello",
+      "generate quarterly report",
+      "analyze correlation between metrics",
+      "lookup deployment SLA requirements",
+      "full database schema with context",
+      "write comprehensive document with detailed analysis",
+      "how's the weather today",
+    ];
+
+    for (const msg of triggers) {
+      if (connectionState !== "connected") break;
+      handleSend(msg);
+      await new Promise((r) => setTimeout(r, 800));
+    }
+
+    setAutoSuiteRunning(false);
+  }, [autoSuiteRunning, connectionState, handleSend]);
+
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-canvas-soft">
       <StatusBar
@@ -90,6 +114,8 @@ export default function Home() {
         onDisconnect={handleDisconnect}
         onReconnect={handleReconnect}
         onReset={handleReset}
+        onAutoSuite={handleAutoSuite}
+        autoSuiteRunning={autoSuiteRunning}
       />
       <div className="flex flex-1 min-h-0">
         <div className="w-80 shrink-0 border-r border-hairline bg-surface">

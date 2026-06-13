@@ -17,6 +17,8 @@ export function StatusBar({
   onDisconnect,
   onReconnect,
   onReset,
+  onAutoSuite,
+  autoSuiteRunning,
 }: {
   connectionState: ConnectionState;
   events: TraceEvent[];
@@ -28,6 +30,8 @@ export function StatusBar({
   onDisconnect: () => void;
   onReconnect: () => void;
   onReset: () => void;
+  onAutoSuite: () => void;
+  autoSuiteRunning: boolean;
 }) {
   const [now, setNow] = useState(() => Date.now());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -153,9 +157,11 @@ export function StatusBar({
 
       <StatusActions
         isConnected={isConnected}
+        autoSuiteRunning={autoSuiteRunning}
         onDisconnect={onDisconnect}
         onReconnect={onReconnect}
         onReset={onReset}
+        onAutoSuite={onAutoSuite}
       />
 
       <span className="text-ink-faint text-[10px]" suppressHydrationWarning>

@@ -4,14 +4,18 @@ import { useState } from "react";
 
 export function StatusActions({
   isConnected,
+  autoSuiteRunning,
   onDisconnect,
   onReconnect,
   onReset,
+  onAutoSuite,
 }: {
   isConnected: boolean;
+  autoSuiteRunning: boolean;
   onDisconnect: () => void;
   onReconnect: () => void;
   onReset: () => void;
+  onAutoSuite: () => void;
 }) {
   const [resetting, setResetting] = useState(false);
 
@@ -23,6 +27,16 @@ export function StatusActions({
 
   return (
     <div className="flex items-center gap-1">
+      <button
+        onClick={onAutoSuite}
+        disabled={autoSuiteRunning || !isConnected}
+        className="px-2 py-0.5 rounded-xs text-[10px] font-semibold font-mono
+          border border-hairline bg-surface text-accent-green
+          hover:bg-accent-green/5 disabled:opacity-30 disabled:cursor-not-allowed
+          transition-colors"
+      >
+        {autoSuiteRunning ? "Running\u2026" : "Run Auto Suite"}
+      </button>
       <button
         onClick={onDisconnect}
         disabled={!isConnected}
