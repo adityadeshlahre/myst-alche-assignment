@@ -42,8 +42,6 @@ export function StatusBar({
   }, []);
 
   let lastSeq = -1;
-  const activeStreams = new Set<string>();
-  const endedStreams = new Set<string>();
   let pendingTools = 0;
   let totalTokens = 0;
   let eventsLast2s = 0;
@@ -53,18 +51,12 @@ export function StatusBar({
     if (ev.seq > lastSeq) lastSeq = ev.seq;
     if (ev.type === "TOKEN") {
       totalTokens++;
-      if (ev.stream_id) activeStreams.add(ev.stream_id);
       if (now - ev.timestamp < 2000) tokensLast2s++;
-    }
-    if (ev.type === "STREAM_END" && ev.stream_id) {
-      endedStreams.add(ev.stream_id);
     }
     if (ev.type === "TOOL_CALL") pendingTools++;
     if (ev.type === "TOOL_RESULT") pendingTools--;
     if (now - ev.timestamp < 2000) eventsLast2s++;
   }
-
-  for (const id of endedStreams) activeStreams.delete(id);
 
   const isConnected = connectionState === "connected";
 
@@ -120,16 +112,6 @@ export function StatusBar({
         value={`${Math.round(eventsLast2s / 2)}`}
         subtitle={tokensLast2s > 0 ? `tok/s` : `ev/s`}
       />
-
-      {activeStreams.size > 0 && (
-        <>
-          <span className="text-hairline">|</span>
-          <span className="text-accent-sky">
-            {activeStreams.size} stream
-            {activeStreams.size !== 1 ? "s" : ""} active
-          </span>
-        </>
-      )}
 
       <span className="text-hairline">|</span>
 
