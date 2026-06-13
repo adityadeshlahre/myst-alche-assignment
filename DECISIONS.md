@@ -1,5 +1,15 @@
 # Design Decisions
 
+## UI Design System
+
+Styled after the Notion design language (see `agent-console/DESIGN.md`): warm off-white canvas (`#f6f5f4`), near-black Inter type, a single blue primary (`#0075de`), and a decorative accent palette (purple, green, sky, orange, teal, brown) for event-type colouring. All tokens are defined as Tailwind v4 theme colours in `globals.css`.
+
+Components are organised into three panels: chat (centre), trace timeline (left or collapsible side), context inspector (right). Shared primitives live in `components/ui/`.
+
+## Deployment
+
+The reference backend is containerised and deployed on Render at `wss://{}.onrender.com/ws`. The console defaults to `ws://localhost:4747/ws` for local dev and uses `NEXT_PUBLIC_WS_URL` env var for the deployed URL. No env vars are required to build — `npm install && npm run build && npm start` works out of the box.
+
 ## Seq-Based Ordering and Deduplication
 
 **Data structure:** Min-heap + Set.
@@ -16,7 +26,9 @@ On `STREAM_END`, `flush()` sorts whatever remains in the heap by seq and release
 
 ## Layout Shift Prevention (Tool Call Interruptions)
 
-*Not yet implemented. Planned approach:* When a `TOOL_CALL` arrives mid-stream, the active token segment is marked as `frozen` — its text is never mutated again, so React never reconciles those DOM nodes. The tool call card renders below the frozen segment. On `TOOL_RESULT`, a new unfrozen token segment opens beneath the card. This avoids reflow because frozen segments are structurally immutable.
+When a `TOOL_CALL` arrives mid-stream, the active token segment is marked as `frozen` — its text is never mutated again, so React never reconciles those DOM nodes. The tool call card renders below the frozen segment. On `TOOL_RESULT`, a new unfrozen token segment opens beneath the card. This avoids reflow because frozen segments are structurally immutable.
+
+`TOOL_ACK` is sent **immediately on socket receipt**, before the message enters the reorder buffer. This prevents the server's 5-second TOOL_ACK timeout from expiring while the message waits in the buffer — a critical edge case in chaos mode where messages arrive out of order.
 
 ## Reconnection State Recovery
 
