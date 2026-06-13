@@ -129,6 +129,12 @@ export const ChatPanel = memo(function ChatPanel({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const blocks = useMemo(() => buildBlocks(events), [events]);
+  const lastTextIdx = useMemo(() => {
+    for (let j = blocks.length - 1; j >= 0; j--) {
+      if (blocks[j].kind === "text") return j;
+    }
+    return -1;
+  }, [blocks]);
   const completedStreams = useMemo(() => {
     const s = new Set<string>();
     for (const ev of events) {
@@ -202,9 +208,9 @@ export const ChatPanel = memo(function ChatPanel({
           <div className="space-y-3 max-w-3xl mx-auto">
             {blocks.map((block, i) => {
               if (block.kind === "text") {
-                const isLastBlock = i === blocks.length - 1;
+                const isAnimating = i === lastTextIdx;
                 const showCursor =
-                  isLastBlock && !completedStreams.has(block.stream_id);
+                  isAnimating && !completedStreams.has(block.stream_id);
                 return (
                   <div
                     key={`t-${i}`}
@@ -217,7 +223,7 @@ export const ChatPanel = memo(function ChatPanel({
                   >
                     <StreamingMessage
                       text={block.content}
-                      animate={isLastBlock}
+                      animate={isAnimating}
                     />
                     {showCursor && (
                       <span className="inline-block w-0.5 h-[1em] bg-primary ml-0.5 animate-blink align-text-bottom" />
