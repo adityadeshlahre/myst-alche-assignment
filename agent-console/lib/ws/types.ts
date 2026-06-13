@@ -84,3 +84,36 @@ export type ClientMessage =
   | PongPayload
   | ResumePayload
   | ToolAckPayload;
+
+// Application state types
+export type ConnectionState =
+  | "disconnected"
+  | "connecting"
+  | "connected"
+  | "reconnecting"
+  | "resuming";
+
+export type TraceEventType =
+  | ServerMessage["type"]
+  | "PONG"
+  | "USER_MESSAGE"
+  | "BUFFER_HOLD";
+
+export interface BufferHoldPayload {
+  type: "BUFFER_HOLD";
+  seq: number;
+  waiting_for: number;
+}
+
+export interface TraceEvent {
+  id: string;
+  seq: number;
+  type: TraceEventType;
+  timestamp: number;
+  payload: Record<string, unknown>;
+  tokenCount?: number;
+  tokenText?: string;
+  durationMs?: number;
+  linked_id?: string;
+  stream_id?: string;
+}
