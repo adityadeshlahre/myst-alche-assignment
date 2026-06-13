@@ -3,7 +3,8 @@
 import { useState, useCallback, useEffect } from "react";
 import type { ServerMessage, TraceEvent, ConnectionState } from "@/lib/ws/types";
 import { useAgentSocket } from "@/hooks/useAgentSocket";
-import { WS_URL } from "@/lib/ws/config";
+import { WS_URL, HTTP_BASE } from "@/lib/ws/config";
+import { StatusBar } from "@/components/ui/StatusBar";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { TraceTimeline } from "@/components/timeline/TraceTimeline";
 import { ContextInspector } from "@/components/context/ContextInspector";
@@ -33,7 +34,7 @@ export default function Home() {
     setEvents((prev) => [...prev, toTraceEvent(msg)]);
   }, []);
 
-  const { connect, send } = useAgentSocket(WS_URL, {
+  const { connect, disconnect, send, bufferSize, expectedSeq, duplicateDrops, heartbeatLatency, reconnectCount } = useAgentSocket(WS_URL, {
     onMessage: handleMessage,
     onConnectionChange: setConnectionState,
   });
@@ -41,6 +42,25 @@ export default function Home() {
   useEffect(() => {
     connect();
   }, [connect]);
+
+  const handleDisconnect = useCallback(() => {
+    disconnect();
+  }, [disconnect]);
+
+  const handleReconnect = useCallback(() => {
+    connect();
+  }, [connect]);
+
+  const handleReset = useCallback(async () => {
+    try {
+      await fetch(`${HTTP_BASE}/reset`, { method: "GET" });
+    } catch {
+      // server may be unreachable — still clear local state
+    }
+    disconnect();
+    setEvents([]);
+    setTimeout(() => connect(), 500);
+  }, [disconnect, connect]);
 
   const handleSend = useCallback(
     (text: string) => {
@@ -58,27 +78,41 @@ export default function Home() {
   );
 
   return (
-    <div className="flex h-screen overflow-hidden bg-canvas-soft">
-      <div className="w-80 shrink-0 border-r border-hairline bg-surface">
-        <TraceTimeline
-          events={events}
-          highlightedId={highlightedId}
-          onHighlight={setHighlightedId}
-        />
-      </div>
+    <div className="flex flex-col h-screen overflow-hidden bg-canvas-soft">
+      <StatusBar
+        connectionState={connectionState}
+        events={events}
+        bufferSize={bufferSize}
+        expectedSeq={expectedSeq}
+        duplicateDrops={duplicateDrops}
+        heartbeatLatency={heartbeatLatency}
+        reconnectCount={reconnectCount}
+        onDisconnect={handleDisconnect}
+        onReconnect={handleReconnect}
+        onReset={handleReset}
+      />
+      <div className="flex flex-1 min-h-0">
+        <div className="w-80 shrink-0 border-r border-hairline bg-surface">
+          <TraceTimeline
+            events={events}
+            highlightedId={highlightedId}
+            onHighlight={setHighlightedId}
+          />
+        </div>
 
-      <div className="flex-1 min-w-0">
-        <ChatPanel
-          events={events}
-          connectionState={connectionState}
-          highlightedId={highlightedId}
-          onHighlight={setHighlightedId}
-          onSend={handleSend}
-        />
-      </div>
+        <div className="flex-1 min-w-0">
+          <ChatPanel
+            events={events}
+            connectionState={connectionState}
+            highlightedId={highlightedId}
+            onHighlight={setHighlightedId}
+            onSend={handleSend}
+          />
+        </div>
 
-      <div className="w-72 shrink-0">
-        <ContextInspector events={events} />
+        <div className="w-72 shrink-0">
+          <ContextInspector events={events} />
+        </div>
       </div>
     </div>
   );

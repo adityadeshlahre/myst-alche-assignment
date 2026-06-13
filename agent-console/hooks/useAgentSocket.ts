@@ -25,9 +25,15 @@ export function useAgentSocket(url: string, callbacks: UseSocketCallbacks) {
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stallTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const unmountedRef = useRef(false);
+  const openCountRef = useRef(0);
+  const [reconnectCount, setReconnectCount] = useState(0);
 
   const [connectionState, setConnectionState] =
     useState<ConnectionState>("disconnected");
+  const [bufferSize, setBufferSize] = useState(0);
+  const [expectedSeq, setExpectedSeq] = useState(0);
+  const [duplicateDrops, setDuplicateDrops] = useState(0);
+  const [heartbeatLatency, setHeartbeatLatency] = useState(0);
 
   const callbacksRef = useRef(callbacks);
   useEffect(() => {
@@ -67,6 +73,10 @@ export function useAgentSocket(url: string, callbacks: UseSocketCallbacks) {
     ws.onopen = () => {
       if (unmountedRef.current) return;
 
+      openCountRef.current++;
+      setReconnectCount(Math.max(0, openCountRef.current - 1));
+      setExpectedSeq(seqBuf.nextExpected());
+
       const lastSeq = seqBuf.getLastProcessed();
       if (lastSeq >= 0) {
         setState("resuming");
@@ -83,6 +93,8 @@ export function useAgentSocket(url: string, callbacks: UseSocketCallbacks) {
           if (seqBuf.size() > 0) {
             const flushed = seqBuf.flush();
             for (const m of flushed) callbacksRef.current.onMessage(m);
+            setBufferSize(seqBuf.size());
+            setExpectedSeq(seqBuf.nextExpected());
           }
         }, 4_000);
       }
@@ -105,20 +117,31 @@ export function useAgentSocket(url: string, callbacks: UseSocketCallbacks) {
       }
 
       if (msg.type === "PING") {
+        const before = performance.now();
         const challenge = msg.challenge ?? "";
         const pong: ClientMessage = { type: "PONG", echo: challenge };
         ws.send(JSON.stringify(pong));
+        setHeartbeatLatency(Math.round(performance.now() - before));
       }
 
       const accepted = seqBuf.insert(msg);
-      if (!accepted) return;
+      if (!accepted) {
+        setDuplicateDrops((n) => n + 1);
+        return;
+      }
+      setBufferSize(seqBuf.size());
+      setExpectedSeq(seqBuf.nextExpected());
 
       const drained = seqBuf.drain();
       for (const m of drained) callbacksRef.current.onMessage(m);
+      setBufferSize(seqBuf.size());
+      setExpectedSeq(seqBuf.nextExpected());
 
       if (msg.type === "STREAM_END") {
         const flushed = seqBuf.flush();
         for (const m of flushed) callbacksRef.current.onMessage(m);
+        setBufferSize(seqBuf.size());
+        setExpectedSeq(seqBuf.nextExpected());
       }
     };
 
@@ -161,5 +184,5 @@ export function useAgentSocket(url: string, callbacks: UseSocketCallbacks) {
     };
   }, [disconnect]);
 
-  return { connectionState, connect, disconnect, send };
+  return { connectionState, bufferSize, expectedSeq, duplicateDrops, heartbeatLatency, reconnectCount, connect, disconnect, send };
 }

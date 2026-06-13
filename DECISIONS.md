@@ -58,6 +58,40 @@ This projection approach means the chat panel is a **pure function of `TraceEven
 
 The projection also enables efficient React reconciliation: frozen blocks have stable keys and never mutate, while the active (unfrozen) text block appends in place.
 
+## Observability StatusBar
+
+A thin top bar spanning all three panels shows real-time transport and protocol metrics. Broken into three sub-components:
+
+- **`TransportPill`** — connection state as a color-coded pill (CONNECTED green, CONNECTING/RESUMING sky, RECONNECTING orange, DISCONNECTED deep orange).
+- **`MetricBadge`** — reusable `label value (subtitle)` display with optional highlight (orange when non-zero) and pulse (purple for pending).
+- **`StatusActions`** — three buttons: Disconnect (closes WS), Reconnect (calls `connect()` with resume), Reset Session (hits `GET /reset`, clears events, reconnects fresh).
+
+Metrics displayed: `Transport` · `reconnects` · `events` · `tokens` · `seq` · `expected` · `drops` · `heartbeat` · `throughput` · `streams` · `buffer` · `pending tools`.
+
+The `useAgentSocket` hook exposes additional reactive state for the bar: `bufferSize`, `expectedSeq`, `duplicateDrops`, `heartbeatLatency`, `reconnectCount`. All updated synchronously within the `onmessage` handler to avoid stale reads.
+
+## Throughput Calculation
+
+Events and tokens per second are computed in the `StatusBar` using a sliding 2-second window. Each render iterates `events[]`, counting entries where `now - ev.timestamp < 2000`. The 2-second count is halved to produce events/sec or tokens/sec. A 1-second interval via `setInterval` keeps `now` fresh so the window slides correctly between streaming bursts.
+
+## Heartbeat Latency
+
+The server's `PING` challenge is a random UUID (not a timestamp), so true RTT cannot be measured from the client. Instead, `useAgentSocket` measures the synchronous processing delay between receiving a `PING` and sending its `PONG` reply using `performance.now()`. In normal operation this is 0ms; in chaos mode with a blocked event loop it may spike, providing a coarse indicator of client-side pressure.
+
+## Duplicate Drop Tracking
+
+The `SequenceBuffer.insert()` method returns `false` when a message's `seq` is already in the seen-set. The hook increments `duplicateDrops` on each rejection, providing a direct count of how many out-of-order or replayed messages the server sent that were safely ignored.
+
+## Manual Session Controls
+
+Three buttons live in the `StatusActions` component (right side of the StatusBar):
+
+- **Disconnect** — calls `disconnect()` from the hook, which closes the WebSocket, clears timers, and sets state to `disconnected`. Disabled when not connected.
+- **Reconnect** — calls `connect()`, which opens a new WebSocket and sends `RESUME` with the last processed seq. Always enabled (user can force a fresh connection).
+- **Reset Session** — fetches `GET /reset` on the HTTP base URL (`http://localhost:4747` by default, configurable via `NEXT_PUBLIC_HTTP_URL`), then disconnects, clears all events, and reconnects after 500ms. This gives a fully clean slate.
+
+The `HTTP_BASE` config is derived from the same env-var pattern as `WS_URL`, defaulting to `http://localhost:4747`.
+
 ## Quick Trigger Chips
 
 The `ChatPanel` renders a set of pre-configured trigger keywords ("Hello", "Report", "Analyze", "DB Schema", "Long") in the empty state. These call `onSend()` directly, matching the server's `scripts.ts` trigger keywords for quick manual testing without typing.
