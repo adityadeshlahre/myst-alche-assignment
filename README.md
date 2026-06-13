@@ -136,11 +136,11 @@ The parent (`page.tsx`) owns all shared state (`TraceEvent[]`, `connectionState`
 
 ```mermaid
 graph LR
-    IN[Incoming] --> HEAP{seq ==<br/>nextExpected?}
-    HEAP -->|yes| DRAIN[drain to consumer]
-    HEAP -->|no > expected| BUF[buffer in min-heap]
-    HEAP -->|no < expected| DROP[drop + count duplicate]
-    BUF -->|gap fills| DRAIN
+    IN["Incoming"] --> HEAP{"seq ==<br/>nextExpected?"}
+    HEAP -->|"yes"| DRAIN["drain to consumer"]
+    HEAP -->|"no > expected"| BUF["buffer in min-heap"]
+    HEAP -->|"no < expected"| DROP["drop + count duplicate"]
+    BUF -->|"gap fills"| DRAIN
 ```
 
 | Mechanism | Data Structure | Complexity |
@@ -186,13 +186,13 @@ The `ChatPanel` does not render `TraceEvent[]` directly. `buildBlocks(events)` p
 
 ```mermaid
 graph TD
-    EV[TraceEvent[]] --> BB[buildBlocks]
-    BB --> TB[TextBlock<br/>accumulates TOKENs]
-    BB --> TLB[ToolBlock<br/>tool call card]
-    BB --> EB[ErrorBlock]
-    TB -->|frozen on TOOL_CALL/ERROR| FT[Frozen TextBlock]
-    TLB -->|updated by| TR[TOOL_RESULT]
-    FT -->|new stream continues| NT[New TextBlock]
+    EV["TraceEvent[]"] --> BB["buildBlocks"]
+    BB --> TB["TextBlock<br/>accumulates TOKENs"]
+    BB --> TLB["ToolBlock<br/>tool call card"]
+    BB --> EB["ErrorBlock"]
+    TB -->|"frozen on TOOL_CALL/ERROR"| FT["Frozen TextBlock"]
+    TLB -->|"updated by"| TR["TOOL_RESULT"]
+    FT -->|"new stream continues"| NT["New TextBlock"]
 ```
 
 | Event | Block action |
