@@ -383,3 +383,5 @@ target
 
 .vscode
 .mypy*
+.vercel
+.env*
