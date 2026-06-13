@@ -60,6 +60,13 @@ export class SequenceBuffer {
     this.seen = new Set();
   }
 
+  /** Full reset — clears everything including lastProcessed (for session reset). */
+  reset(): void {
+    this.heap = [];
+    this.seen = new Set();
+    this.lastProcessed = 0;
+  }
+
   getLastProcessed(): Seq {
     return this.lastProcessed;
   }

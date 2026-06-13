@@ -172,6 +172,10 @@ export function useAgentSocket(url: string, callbacks: UseSocketCallbacks) {
     connectRef.current = connect;
   }, [connect]);
 
+  const resetSeqBuf = useCallback(() => {
+    seqBufRef.current.reset();
+  }, []);
+
   const send = useCallback((msg: ClientMessage) => {
     wsRef.current?.send(JSON.stringify(msg));
   }, []);
@@ -194,5 +198,6 @@ export function useAgentSocket(url: string, callbacks: UseSocketCallbacks) {
     connect,
     disconnect,
     send,
+    resetSeqBuf,
   };
 }

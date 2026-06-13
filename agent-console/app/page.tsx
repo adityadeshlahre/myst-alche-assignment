@@ -60,10 +60,10 @@ export default function Home() {
     disconnect,
     send,
     bufferSize,
-    expectedSeq,
     duplicateDrops,
     heartbeatLatency,
     reconnectCount,
+    resetSeqBuf,
   } = useAgentSocket(WS_URL, {
     onMessage: handleMessage,
     onConnectionChange: setConnectionState,
@@ -94,9 +94,10 @@ export default function Home() {
       // server may be unreachable — still clear local state
     }
     disconnect();
+    resetSeqBuf();
     setEvents([]);
     setTimeout(() => connect(), 500);
-  }, [disconnect, connect]);
+  }, [disconnect, connect, resetSeqBuf]);
 
   const handleSend = useCallback(
     (text: string) => {
@@ -142,7 +143,7 @@ export default function Home() {
         connectionState={connectionState}
         events={events}
         bufferSize={bufferSize}
-        expectedSeq={expectedSeq}
+
         duplicateDrops={duplicateDrops}
         heartbeatLatency={heartbeatLatency}
         reconnectCount={reconnectCount}

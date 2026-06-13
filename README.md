@@ -381,9 +381,19 @@ npm run test     # vitest run
 Run the reference backend (from repo root):
 
 ```bash
-docker build -t agent-server ./agent-server
-docker run -p 4747:4747 agent-server               # normal
-docker run -p 4747:4747 agent-server --mode chaos   # chaos
+docker build -t agent-server ./agent-server && docker run --rm -p 4747:4747 --name agent-server agent-server
+```
+
+Chaos mode:
+
+```bash
+docker build -t agent-server ./agent-server && docker run --rm -p 4747:4747 --name agent-server agent-server --mode chaos
+```
+
+Stop + clean up (new terminal):
+
+```bash
+docker rm agent-server && docker rmi agent-server
 ```
 
 See `agent-server/README.md` for trigger keywords and protocol details.
