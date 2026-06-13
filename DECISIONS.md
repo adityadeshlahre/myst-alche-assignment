@@ -74,6 +74,27 @@ The `useAgentSocket` hook exposes additional reactive state for the bar: `buffer
 
 Events and tokens per second are computed in the `StatusBar` using a sliding 2-second window. Each render iterates `events[]`, counting entries where `now - ev.timestamp < 2000`. The 2-second count is halved to produce events/sec or tokens/sec. A 1-second interval via `setInterval` keeps `now` fresh so the window slides correctly between streaming bursts.
 
+## Diff Engine — Web Worker
+
+Context snapshots can exceed 500KB (especially the `large_context` script with its 64-table database schema). Computing a recursive deep-diff on the main thread blocks React's render pipeline, causing visible jank.
+
+A Web Worker (`lib/diff/worker.ts`) runs `diffObjects` — the same recursive tree diff used before — on a background thread. The engine (`lib/diff/engine.ts`) manages worker lifecycle with a singleton pattern: one worker is created on first use, all diffs are dispatched as `postMessage`/`onmessage` pairs keyed by a monotonic `jobId`, and pending promises resolve when the worker responds. `destroyWorker()` terminates the worker on unmount.
+
+The `ContextInspector` no longer computes diffs synchronously in `useMemo`. Instead, a `useEffect` fires `requestDiff(prev, next)` on snapshot change, stores the result in state via the async callback, and uses a `cancelledRef` guard to discard stale responses from aborted requests (e.g. rapid snapshot scrubbing).
+
+Files:
+- `lib/diff/types.ts` — shared DiffKind, DiffNode, DiffRequest, DiffResponse
+- `lib/diff/worker.ts` — worker entry with inline diffObjects + onmessage
+- `lib/diff/engine.ts` — singleton worker, requestDiff(), destroyWorker()
+
+## rAF State Batching
+
+Without batching, every `ServerMessage` (including each individual `TOKEN` from a stream) calls `setEvents()` directly, triggering a React render of all three panels. With TOKENs arriving every 30–80ms, this creates unnecessary render pressure.
+
+Incoming messages are pushed to a `pendingEventsRef` array on receipt. A `requestAnimationFrame` callback drains the array and calls `setEvents()` once per frame (~16ms). A `scheduledRef` boolean prevents queueing duplicate rAFs — rapid bursts coalesce into a single render. On unmount, any pending rAF is cancelled.
+
+This matches the approach in the reference `useBatchedEngineState` hook but is simpler: no external `ProtocolEngine` class or subscription model needed. The WebSocket hook's `onMessage` callback is the single ingestion point, so batching lives directly in `page.tsx` where state is owned.
+
 ## Heartbeat Latency
 
 The server's `PING` challenge is a random UUID (not a timestamp), so true RTT cannot be measured from the client. Instead, `useAgentSocket` measures the synchronous processing delay between receiving a `PING` and sending its `PONG` reply using `performance.now()`. In normal operation this is 0ms; in chaos mode with a blocked event loop it may spike, providing a coarse indicator of client-side pressure.

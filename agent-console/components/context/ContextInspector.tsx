@@ -1,71 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import type { TraceEvent } from "@/lib/ws/types";
-
-type DiffKind = "added" | "removed" | "changed" | "same";
-
-interface DiffNode {
-  key: string;
-  kind: DiffKind;
-  oldVal?: unknown;
-  newVal?: unknown;
-  children?: DiffNode[];
-}
-
-function diffObjects(
-  prev: Record<string, unknown> | null,
-  next: Record<string, unknown>,
-  depth = 0
-): DiffNode[] {
-  const keys = new Set([
-    ...Object.keys(next),
-    ...(prev ? Object.keys(prev) : []),
-  ]);
-  const nodes: DiffNode[] = [];
-
-  for (const key of keys) {
-    const inPrev = prev !== null && key in prev;
-    const inNext = key in next;
-
-    if (!inPrev) {
-      nodes.push({ key, kind: "added", newVal: next[key] });
-    } else if (!inNext) {
-      nodes.push({ key, kind: "removed", oldVal: prev![key] });
-    } else {
-      const pv = prev![key];
-      const nv = next[key];
-
-      if (
-        depth < 3 &&
-        pv !== null &&
-        nv !== null &&
-        typeof pv === "object" &&
-        typeof nv === "object" &&
-        !Array.isArray(pv) &&
-        !Array.isArray(nv)
-      ) {
-        const children = diffObjects(
-          pv as Record<string, unknown>,
-          nv as Record<string, unknown>,
-          depth + 1
-        );
-        const hasChange = children.some((c) => c.kind !== "same");
-        nodes.push({ key, kind: hasChange ? "changed" : "same", children });
-      } else {
-        const changed = JSON.stringify(pv) !== JSON.stringify(nv);
-        nodes.push({
-          key,
-          kind: changed ? "changed" : "same",
-          oldVal: pv,
-          newVal: nv,
-        });
-      }
-    }
-  }
-
-  return nodes;
-}
+import type { DiffNode, DiffKind } from "@/lib/diff/types";
+import { requestDiff, destroyWorker } from "@/lib/diff/engine";
 
 const DIFF_STYLES: Record<DiffKind, string> = {
   added: "bg-accent-green/10 border-l-2 border-accent-green",
@@ -115,7 +53,7 @@ function TreeNode({
       >
         {hasChildren && (
           <span className="text-ink-faint select-none w-3">
-            {open ? "▾" : "▸"}
+            {open ? "\u25BE" : "\u25B8"}
           </span>
         )}
         {!hasChildren && <span className="w-3" />}
@@ -173,11 +111,7 @@ interface ContextSnapshot {
   timestamp: number;
 }
 
-export function ContextInspector({
-  events,
-}: {
-  events: TraceEvent[];
-}) {
+export function ContextInspector({ events }: { events: TraceEvent[] }) {
   const snapshots: ContextSnapshot[] = useMemo(
     () =>
       events
@@ -188,7 +122,7 @@ export function ContextInspector({
           seq: e.seq,
           timestamp: e.timestamp,
         })),
-    [events]
+    [events],
   );
 
   const byId = useMemo(() => {
@@ -204,18 +138,32 @@ export function ContextInspector({
   const ids = useMemo(() => Array.from(byId.keys()), [byId]);
   const [selectedId, setSelectedId] = useState<string>("");
   const [step, setStep] = useState(0);
+  const [diffNodes, setDiffNodes] = useState<DiffNode[]>([]);
+  const cancelledRef = useRef(false);
 
   const activeId = selectedId || ids[0] || "";
-  const history = activeId ? byId.get(activeId) ?? [] : [];
+  const history = activeId ? (byId.get(activeId) ?? []) : [];
   const clamped = Math.min(step, Math.max(0, history.length - 1));
   const current = history[clamped];
   const prev = clamped > 0 ? history[clamped - 1] : null;
   const showDiff = prev !== null;
 
-  const diffNodes = useMemo(() => {
-    if (!current) return [];
-    return diffObjects(prev?.data ?? null, current.data);
+  useEffect(() => {
+    if (!current) return;
+    cancelledRef.current = false;
+    requestDiff(prev?.data ?? null, current.data).then((nodes) => {
+      if (!cancelledRef.current) {
+        setDiffNodes(nodes);
+      }
+    });
+    return () => {
+      cancelledRef.current = true;
+    };
   }, [current, prev]);
+
+  useEffect(() => {
+    return () => destroyWorker();
+  }, []);
 
   const handleIdChange = (id: string) => {
     setSelectedId(id);
@@ -258,9 +206,7 @@ export function ContextInspector({
           </span>
           <button
             disabled={clamped >= history.length - 1}
-            onClick={() =>
-              setStep((s) => Math.min(history.length - 1, s + 1))
-            }
+            onClick={() => setStep((s) => Math.min(history.length - 1, s + 1))}
             className="text-xs px-2 py-0.5 rounded-md border border-hairline text-ink-muted disabled:opacity-40 hover:bg-canvas-soft font-sans"
           >
             {"\u2192"}

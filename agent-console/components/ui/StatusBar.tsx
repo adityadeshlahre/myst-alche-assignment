@@ -79,7 +79,9 @@ export function StatusBar({
         reconnects{" "}
         <span
           className={`font-semibold ${
-            reconnectCount > 0 ? "text-accent-orange-deep" : "text-ink-secondary"
+            reconnectCount > 0
+              ? "text-accent-orange-deep"
+              : "text-ink-secondary"
           }`}
         >
           {reconnectCount}

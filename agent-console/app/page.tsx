@@ -1,7 +1,11 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
-import type { ServerMessage, TraceEvent, ConnectionState } from "@/lib/ws/types";
+import { useState, useCallback, useEffect, useRef } from "react";
+import type {
+  ServerMessage,
+  TraceEvent,
+  ConnectionState,
+} from "@/lib/ws/types";
 import { useAgentSocket } from "@/hooks/useAgentSocket";
 import { WS_URL, HTTP_BASE } from "@/lib/ws/config";
 import { StatusBar } from "@/components/ui/StatusBar";
@@ -21,27 +25,58 @@ function toTraceEvent(msg: ServerMessage): TraceEvent {
     timestamp: Date.now(),
     payload: rest as Record<string, unknown>,
     stream_id: (rest.stream_id as string) ?? undefined,
-    linked_id: type === "TOOL_CALL" || type === "TOOL_RESULT" ? (rest.call_id as string) : undefined,
+    linked_id:
+      type === "TOOL_CALL" || type === "TOOL_RESULT"
+        ? (rest.call_id as string)
+        : undefined,
   };
 }
 
 export default function Home() {
   const [events, setEvents] = useState<TraceEvent[]>([]);
-  const [connectionState, setConnectionState] = useState<ConnectionState>("disconnected");
+  const [connectionState, setConnectionState] =
+    useState<ConnectionState>("disconnected");
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [autoSuiteRunning, setAutoSuiteRunning] = useState(false);
+  const pendingEventsRef = useRef<TraceEvent[]>([]);
+  const rafIdRef = useRef<number | null>(null);
+  const scheduledRef = useRef(false);
 
   const handleMessage = useCallback((msg: ServerMessage) => {
-    setEvents((prev) => [...prev, toTraceEvent(msg)]);
+    pendingEventsRef.current.push(toTraceEvent(msg));
+    if (scheduledRef.current) return;
+    scheduledRef.current = true;
+    rafIdRef.current = requestAnimationFrame(() => {
+      scheduledRef.current = false;
+      const batch = pendingEventsRef.current.splice(0);
+      if (batch.length > 0) {
+        setEvents((prev) => [...prev, ...batch]);
+      }
+    });
   }, []);
 
-  const { connect, disconnect, send, bufferSize, expectedSeq, duplicateDrops, heartbeatLatency, reconnectCount } = useAgentSocket(WS_URL, {
+  const {
+    connect,
+    disconnect,
+    send,
+    bufferSize,
+    expectedSeq,
+    duplicateDrops,
+    heartbeatLatency,
+    reconnectCount,
+  } = useAgentSocket(WS_URL, {
     onMessage: handleMessage,
     onConnectionChange: setConnectionState,
   });
 
   useEffect(() => {
     connect();
+    return () => {
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+    };
   }, [connect]);
 
   const handleDisconnect = useCallback(() => {

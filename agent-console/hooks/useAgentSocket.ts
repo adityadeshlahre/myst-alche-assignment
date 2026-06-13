@@ -184,5 +184,15 @@ export function useAgentSocket(url: string, callbacks: UseSocketCallbacks) {
     };
   }, [disconnect]);
 
-  return { connectionState, bufferSize, expectedSeq, duplicateDrops, heartbeatLatency, reconnectCount, connect, disconnect, send };
+  return {
+    connectionState,
+    bufferSize,
+    expectedSeq,
+    duplicateDrops,
+    heartbeatLatency,
+    reconnectCount,
+    connect,
+    disconnect,
+    send,
+  };
 }

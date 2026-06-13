@@ -24,7 +24,10 @@ export class SequenceBuffer {
   /** Drain all messages whose seq is the next expected one. */
   drain(): ServerMessage[] {
     const result: ServerMessage[] = [];
-    while (this.heap.length > 0 && this.heap[0].seq === this.lastProcessed + 1) {
+    while (
+      this.heap.length > 0 &&
+      this.heap[0].seq === this.lastProcessed + 1
+    ) {
       const msg = this.pop();
       result.push(msg);
       this.lastProcessed = msg.seq;
@@ -92,10 +95,15 @@ export class SequenceBuffer {
       let smallest = idx;
       const left = idx * 2 + 1;
       const right = idx * 2 + 2;
-      if (left < n && this.heap[left].seq < this.heap[smallest].seq) smallest = left;
-      if (right < n && this.heap[right].seq < this.heap[smallest].seq) smallest = right;
+      if (left < n && this.heap[left].seq < this.heap[smallest].seq)
+        smallest = left;
+      if (right < n && this.heap[right].seq < this.heap[smallest].seq)
+        smallest = right;
       if (smallest === idx) break;
-      [this.heap[idx], this.heap[smallest]] = [this.heap[smallest], this.heap[idx]];
+      [this.heap[idx], this.heap[smallest]] = [
+        this.heap[smallest],
+        this.heap[idx],
+      ];
       idx = smallest;
     }
   }

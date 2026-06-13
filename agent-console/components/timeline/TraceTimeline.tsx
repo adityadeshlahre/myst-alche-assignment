@@ -3,10 +3,7 @@
 import { useState, useRef, useEffect, useMemo, memo } from "react";
 import type { TraceEvent } from "@/lib/ws/types";
 
-const EVENT_CONFIG: Record<
-  string,
-  { label: string; color: string }
-> = {
+const EVENT_CONFIG: Record<string, { label: string; color: string }> = {
   TOKEN: { label: "TOKEN", color: "text-ink-muted" },
   TOOL_CALL: { label: "TOOL_CALL", color: "text-accent-purple" },
   TOOL_RESULT: { label: "TOOL_RESULT", color: "text-accent-green" },
@@ -157,9 +154,8 @@ export function TraceTimeline({
     prevHighlightRef.current = id;
 
     const target =
-      events.find(
-        (ev) => ev.linked_id === id && ev.type === "TOOL_CALL"
-      ) ?? events.find((ev) => ev.id === id);
+      events.find((ev) => ev.linked_id === id && ev.type === "TOOL_CALL") ??
+      events.find((ev) => ev.id === id);
 
     if (!target) return;
     const el = document.getElementById(`trace-row-${target.id}`);
@@ -189,8 +185,7 @@ export function TraceTimeline({
     const results = new Set<string>();
     for (const ev of filtered) {
       if (ev.type === "TOOL_CALL" && ev.linked_id) calls.add(ev.linked_id);
-      if (ev.type === "TOOL_RESULT" && ev.linked_id)
-        results.add(ev.linked_id);
+      if (ev.type === "TOOL_RESULT" && ev.linked_id) results.add(ev.linked_id);
     }
     return new Set([...calls].filter((id) => results.has(id)));
   }, [filtered]);

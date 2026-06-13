@@ -71,7 +71,7 @@ export function buildBlocks(events: TraceEvent[]): ChatBlock[] {
         activeText = null;
         const tool = blocks.find(
           (b): b is ToolBlock =>
-            b.kind === "tool" && b.call_id === ev.payload.call_id
+            b.kind === "tool" && b.call_id === ev.payload.call_id,
         );
         if (tool) {
           tool.state = "completed";
@@ -137,10 +137,9 @@ export function ChatPanel({
 
   useEffect(() => {
     if (!highlightedId) return;
-    const el =
-      containerRef.current?.querySelector<HTMLElement>(
-        `[data-id="${highlightedId}"]`
-      );
+    const el = containerRef.current?.querySelector<HTMLElement>(
+      `[data-id="${highlightedId}"]`,
+    );
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [highlightedId]);
 
@@ -162,7 +161,8 @@ export function ChatPanel({
           className={`text-xs font-mono px-2 py-0.5 rounded-full ${
             connectionState === "connected"
               ? "bg-accent-green/10 text-accent-green"
-              : connectionState === "connecting" || connectionState === "reconnecting"
+              : connectionState === "connecting" ||
+                  connectionState === "reconnecting"
                 ? "bg-accent-orange/10 text-accent-orange"
                 : "bg-accent-orange-deep/10 text-accent-orange-deep"
           }`}
@@ -199,7 +199,8 @@ export function ChatPanel({
                   !block.frozen &&
                   !events.some(
                     (e) =>
-                      e.type === "STREAM_END" && e.stream_id === block.stream_id
+                      e.type === "STREAM_END" &&
+                      e.stream_id === block.stream_id,
                   );
                 return (
                   <div
@@ -255,9 +256,7 @@ export function ChatPanel({
                     </div>
                     {block.state === "completed" && block.result && (
                       <div className="px-3 py-2 border-t border-hairline space-y-1">
-                        <div className="text-ink-faint text-[10px]">
-                          result
-                        </div>
+                        <div className="text-ink-faint text-[10px]">result</div>
                         <pre className="text-accent-green whitespace-pre-wrap break-all text-[11px]">
                           {JSON.stringify(block.result, null, 2)}
                         </pre>
