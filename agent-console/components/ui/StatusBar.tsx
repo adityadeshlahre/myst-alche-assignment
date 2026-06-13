@@ -158,7 +158,7 @@ export function StatusBar({
         onReset={onReset}
       />
 
-      <span className="text-ink-faint text-[10px]">
+      <span className="text-ink-faint text-[10px]" suppressHydrationWarning>
         {new Date(now).toLocaleTimeString()}
       </span>
     </div>

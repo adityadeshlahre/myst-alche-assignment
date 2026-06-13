@@ -94,7 +94,7 @@ const TraceRow = memo(function TraceRow({
           linkStyle === "end" ? "pl-6 pr-4" : "px-4"
         }`}
       >
-        <span className="text-ink-faint w-16 shrink-0 font-mono text-xs">
+        <span className="text-ink-faint w-[88px] shrink-0 font-mono text-xs">
           {time}
         </span>
         <span className={`w-22 shrink-0 font-semibold text-xs ${cfg.color}`}>
@@ -114,7 +114,7 @@ const TraceRow = memo(function TraceRow({
       </div>
 
       {expanded && isBatch && event.tokenText && (
-        <div className="px-4 pb-2 text-xs text-ink-secondary whitespace-pre-wrap font-mono pl-[116px]">
+        <div className="px-4 pb-2 text-xs text-ink-secondary whitespace-pre-wrap font-mono pl-[140px]">
           {event.tokenText}
         </div>
       )}
@@ -224,7 +224,7 @@ export function TraceTimeline({
         </h2>
         <input
           type="text"
-          placeholder="Search events\u2026"
+          placeholder="Search events..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full bg-canvas border border-hairline rounded-xs px-2 py-1.5 text-xs text-ink placeholder-ink-faint focus:outline-none focus:border-primary font-sans"
