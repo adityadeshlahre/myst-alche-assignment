@@ -28,9 +28,9 @@ interface ErrorBlock {
   seqs: number[];
 }
 
-type ChatBlock = TextBlock | ToolBlock | ErrorBlock;
+export type ChatBlock = TextBlock | ToolBlock | ErrorBlock;
 
-function buildBlocks(events: TraceEvent[]): ChatBlock[] {
+export function buildBlocks(events: TraceEvent[]): ChatBlock[] {
   const blocks: ChatBlock[] = [];
   let activeText: TextBlock | null = null;
 

@@ -10,7 +10,7 @@ type Seq = number;
 export class SequenceBuffer {
   private heap: ServerMessage[] = [];
   private seen: Set<Seq> = new Set();
-  private lastProcessed: Seq = -1;
+  private lastProcessed: Seq = 0;
 
   /** Insert a message. Returns true if accepted, false if duplicate. */
   insert(msg: ServerMessage): boolean {
