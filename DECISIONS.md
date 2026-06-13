@@ -6,6 +6,20 @@ Styled after the Notion design language (see `agent-console/DESIGN.md`): warm of
 
 Components are organised into three panels: chat (centre), trace timeline (left or collapsible side), context inspector (right). Shared primitives live in `components/ui/`.
 
+All three panel components are **props-based** (no global store dependency). They receive `TraceEvent[]` and callbacks — this keeps them reusable, testable, and decoupled from the WebSocket layer.
+
+## Three-Panel Layout
+
+The main page (`app/page.tsx`) renders three panels in a horizontal flex: TraceTimeline (320px, left), ChatPanel (flex-1, centre), ContextInspector (288px, right). The parent owns all shared state:
+
+- `TraceEvent[]` — accumulated from `useAgentSocket.onMessage`. Each `ServerMessage` is projected into a `TraceEvent` with a unique `id`, timestamp, and `linked_id` (for TOOL_CALL/TOOL_RESULT pairs).
+- `connectionState` — synced from the hook via `onConnectionChange` callback.
+- `highlightedId` — shared between ChatPanel and TraceTimeline for bidirectional highlight.
+
+The parent calls `connect()` once on mount via `useEffect`. The hook manages reconnection internally via exponential backoff; the parent's `onConnectionChange` callback keeps the UI in sync.
+
+`toTraceEvent(msg)` uses `as unknown as Record<string, unknown>` to destructure the discriminated `ServerMessage` union — this is the single documented type escape hatch in the codebase.
+
 ## Deployment
 
 The reference backend is containerised and deployed on Render at `wss://{}.onrender.com/ws`. The console defaults to `ws://localhost:4747/ws` for local dev and uses `NEXT_PUBLIC_WS_URL` env var for the deployed URL. No env vars are required to build — `npm install && npm run build && npm start` works out of the box.
@@ -26,9 +40,31 @@ On `STREAM_END`, `flush()` sorts whatever remains in the heap by seq and release
 
 ## Layout Shift Prevention (Tool Call Interruptions)
 
-When a `TOOL_CALL` arrives mid-stream, the active token segment is marked as `frozen` — its text is never mutated again, so React never reconciles those DOM nodes. The tool call card renders below the frozen segment. On `TOOL_RESULT`, a new unfrozen token segment opens beneath the card. This avoids reflow because frozen segments are structurally immutable.
+When a `TOOL_CALL` arrives mid-stream, the active `TextBlock` is frozen — its content string is never mutated again, so React never reconciles those DOM nodes. The `ToolBlock` card renders below the frozen segment. On `TOOL_RESULT`, a new unfrozen `TextBlock` opens beneath the card (pushed into `blocks[]` as a fresh entry). This avoids reflow because frozen blocks have stable content and the new block appends to the end.
+
+Because `buildBlocks` projects events into stable keyed blocks (`t-0`, `t-1`, `c-<call_id>`, etc.), React reconciles by key — existing frozen blocks stay mounted, only the active text block updates, and new blocks append.
 
 `TOOL_ACK` is sent **immediately on socket receipt**, before the message enters the reorder buffer. This prevents the server's 5-second TOOL_ACK timeout from expiring while the message waits in the buffer — a critical edge case in chaos mode where messages arrive out of order.
+
+## Chat Rendering — BuildBlocks Projection
+
+The `ChatPanel` does not render `TraceEvent[]` directly. Instead, `buildBlocks(events)` projects the flat event stream into a `ChatBlock[]` with three variants:
+
+- **`TextBlock`** — accumulates `TOKEN` events sharing the same `stream_id`. Frozen once a `TOOL_CALL`, `ERROR`, or new `stream_id` arrives.
+- **`ToolBlock`** — created on `TOOL_CALL`, updated on `TOOL_RESULT`. Shows args immediately, result on completion.
+- **`ErrorBlock`** — rendered on `ERROR` with code + message.
+
+This projection approach means the chat panel is a **pure function of `TraceEvent[]`** — no hidden state, no reducer, no Redux. The same events always produce the same blocks. This makes reconnection trivial: just replay events from the buffer.
+
+The projection also enables efficient React reconciliation: frozen blocks have stable keys and never mutate, while the active (unfrozen) text block appends in place.
+
+## Quick Trigger Chips
+
+The `ChatPanel` renders a set of pre-configured trigger keywords ("Hello", "Report", "Analyze", "DB Schema", "Long") in the empty state. These call `onSend()` directly, matching the server's `scripts.ts` trigger keywords for quick manual testing without typing.
+
+## Bidirectional Highlight
+
+Both `ChatPanel` and `TraceTimeline` accept a shared `highlightedId` prop + `onHighlight` callback. When a user clicks a tool call card in chat, it calls `onHighlight(call_id)` which sets `highlightedId` in the parent. The timeline responds by scrolling to the matching `TOOL_CALL` row and highlighting it (and vice versa). The mechanism uses `data-id` attributes for DOM targeting and a `ref` guard (`prevHighlightRef`) to prevent scroll loops.
 
 ## Reconnection State Recovery
 

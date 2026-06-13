@@ -16,6 +16,7 @@
   --accent-purple: #d6b6f6;
   --accent-pink: #ff64c8;
   --accent-orange: #dd5b00;
+  --accent-orange-deep: #793400;
   --accent-teal: #2a9d99;
   --accent-green: #1aae39;
   --accent-brown: #523410;
@@ -37,6 +38,7 @@
   --color-accent-purple: var(--accent-purple);
   --color-accent-pink: var(--accent-pink);
   --color-accent-orange: var(--accent-orange);
+  --color-accent-orange-deep: var(--accent-orange-deep);
   --color-accent-teal: var(--accent-teal);
   --color-accent-green: var(--accent-green);
   --color-accent-brown: var(--accent-brown);
