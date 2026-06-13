@@ -100,7 +100,7 @@ const TraceRow = memo(function TraceRow({
           )}
           {cfg.label}
         </span>
-        <span className="text-ink-muted truncate flex-1 text-xs">
+        <span className="text-ink-muted truncate flex-1 text-xs" title={summary}>
           {summary}
         </span>
         {event.seq > 0 && (

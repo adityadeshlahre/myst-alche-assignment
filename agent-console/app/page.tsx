@@ -41,6 +41,13 @@ export default function Home() {
   const pendingEventsRef = useRef<TraceEvent[]>([]);
   const rafIdRef = useRef<number | null>(null);
   const scheduledRef = useRef(false);
+  const eventsRef = useRef(events);
+
+  useEffect(() => {
+    eventsRef.current = events;
+  }, [events]);
+  const streamEndResolveRef = useRef<(() => void) | null>(null);
+  const processedStreamEndsRef = useRef(0);
 
   const handleMessage = useCallback((msg: ServerMessage) => {
     pendingEventsRef.current.push(toTraceEvent(msg));
@@ -78,6 +85,17 @@ export default function Home() {
       }
     };
   }, [connect]);
+
+  useEffect(() => {
+    const streamEndCount = events.filter(
+      (e) => e.type === "STREAM_END",
+    ).length;
+    if (streamEndCount > processedStreamEndsRef.current) {
+      processedStreamEndsRef.current = streamEndCount;
+      streamEndResolveRef.current?.();
+      streamEndResolveRef.current = null;
+    }
+  }, [events]);
 
   const handleDisconnect = useCallback(() => {
     disconnect();
@@ -129,13 +147,16 @@ export default function Home() {
     ];
 
     for (const msg of triggers) {
-      if (connectionState !== "connected") break;
+      if (eventsRef.current.at(-1)?.type === "ERROR") break;
       handleSend(msg);
-      await new Promise((r) => setTimeout(r, 800));
+      await new Promise<void>((resolve) => {
+        streamEndResolveRef.current = resolve;
+        setTimeout(resolve, 30_000);
+      });
     }
 
     setAutoSuiteRunning(false);
-  }, [autoSuiteRunning, connectionState, handleSend]);
+  }, [autoSuiteRunning, handleSend]);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-canvas-soft">

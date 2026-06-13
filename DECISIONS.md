@@ -177,3 +177,16 @@ Token accumulation in the reducer state would become a memory concern. Instead o
 The timeline token batching would need pagination or cursor-based loading rather than holding all trace events in memory. Virtual scrolling becomes required, not optional.
 
 The sequence buffer itself is unaffected — it only buffers what hasn't been released to the consumer, which should remain small (~dozens of messages) regardless of total response length.
+
+## Patches
+
+### Seq Reset on USER_MESSAGE
+
+**Problem:** The server resets `seq` to 0 on every `USER_MESSAGE` (see `agent-server/src/server.ts:210`). The `SequenceBuffer` assumes global monotonic seqs across the session. After the first response drained seqs 1–N, `lastProcessed = N`. The second response's seqs (1, 2, 3…) were all < N+1, so they accumulated in the min-heap and never drained. The `STREAM_END` handler called `flush()` to force-release them, but the auto suite's completion detection (which watched for `STREAM_END` in the events array) fired prematurely — some TOKENs were still in-flight due to chaos-mode reordering. Subsequent `USER_MESSAGE`s piled up on the server, causing backlog and hangs.
+
+**Fix:** `send()` in `useAgentSocket.ts` calls `seqBufRef.current.reset()` before serialising a `USER_MESSAGE` to the WebSocket. This zeros `lastProcessed`, clears the heap and seen-set. The new response's seqs (starting from 1) satisfy `heap[0].seq === lastProcessed + 1` on the first drain call and flow through naturally. Any messages still buffered from the previous response (late arrivals after a chaos-mode flush) are discarded — acceptable because the previous `STREAM_END` was already dispatched to the UI.
+
+**Files changed:**
+- `agent-console/hooks/useAgentSocket.ts:179–182` — `send()` resets the sequence buffer before `USER_MESSAGE`
+
+**Invariant preserved:** `SequenceBuffer.reset()` is called at exactly one point — before sending a `USER_MESSAGE`. Normal message processing (`insert` → `drain`) is unchanged. Stall recovery (4s interval) and reconnection (`resetForReconnection()`) remain independent.

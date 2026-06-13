@@ -177,6 +177,9 @@ export function useAgentSocket(url: string, callbacks: UseSocketCallbacks) {
   }, []);
 
   const send = useCallback((msg: ClientMessage) => {
+    if (msg.type === "USER_MESSAGE") {
+      seqBufRef.current.reset();
+    }
     wsRef.current?.send(JSON.stringify(msg));
   }, []);
 
