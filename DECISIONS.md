@@ -95,6 +95,31 @@ Incoming messages are pushed to a `pendingEventsRef` array on receipt. A `reques
 
 This matches the approach in the reference `useBatchedEngineState` hook but is simpler: no external `ProtocolEngine` class or subscription model needed. The WebSocket hook's `onMessage` callback is the single ingestion point, so batching lives directly in `page.tsx` where state is owned.
 
+## useDeferredValue for Side Panel Priority
+
+During active streaming, all three panels receive the same `events` array and re-render on every rAF batch. Only the ChatPanel needs urgent updates — the TraceTimeline and ContextInspector can lag a frame behind without noticeable degradation.
+
+`useDeferredValue` tells React to deprioritise the side panels' renders. When the main thread is under pressure (e.g. rapid TOKEN arrivals), React will commit the ChatPanel update first and defer the side panels to the next idle period. During idle frames the side panels catch up instantly — the deferral is invisible to the user.
+
+```tsx
+const deferredEvents = useDeferredValue(events); // → TraceTimeline, ContextInspector
+```
+
+The chat panel continues to receive `events` directly (urgent), while side panels receive the deferred copy. This prevents timeline re-renders and context diff recalculations from competing for frame time with chat rendering.
+
+## Smooth Streaming — Typewriter Animation
+
+After applying rAF batching, text still appeared in bursts matching the server's token delivery cadence (30–80ms). To decouple visual display from network arrival, a typewriter animation layer was added following the Upstash smooth-streaming pattern.
+
+`hooks/useStream.ts` maintains two separate states:
+
+- `parts` — raw text deltas as they arrive from the server (buffered in state)
+- `stream` — the currently visible text, advanced character-by-character via `requestAnimationFrame` at a configurable `TYPING_SPEED` (default 10ms/char = ~100 chars/sec)
+
+When new parts arrive mid-animation, the existing rAF loop is cancelled and restarted with the expanded full text. The animation continues from the same `indexRef` position, so new characters are seamlessly appended to the queue.
+
+`components/chat/StreamingMessage.tsx` computes the delta between renders (`text.slice(consumedLength)`) and feeds only new characters to `useStream.addPart()`. Frozen blocks (completed) skip animation and render instantly. The last unfrozen block always animates even after `STREAM_END` — only the blinking cursor disappears, while the typewriter finishes showing the remaining buffered text.
+
 ## Heartbeat Latency
 
 The server's `PING` challenge is a random UUID (not a timestamp), so true RTT cannot be measured from the client. Instead, `useAgentSocket` measures the synchronous processing delay between receiving a `PING` and sending its `PONG` reply using `performance.now()`. In normal operation this is 0ms; in chaos mode with a blocked event loop it may spike, providing a coarse indicator of client-side pressure.
