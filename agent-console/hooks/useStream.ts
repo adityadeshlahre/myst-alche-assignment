@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const TYPING_SPEED = 5;
+const TYPING_SPEED = 10;
 
 export function useStream() {
   const [parts, setParts] = useState<string[]>([]);

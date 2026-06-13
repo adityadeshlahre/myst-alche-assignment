@@ -44,6 +44,12 @@
   --color-accent-brown: var(--accent-brown);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --animate-blink: blink 0.8s step-end infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
 body {
@@ -51,3 +57,10 @@ body {
   color: var(--ink);
   font-family: var(--font-geist-sans), Inter, sans-serif;
 }
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+

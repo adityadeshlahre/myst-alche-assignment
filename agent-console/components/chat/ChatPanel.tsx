@@ -202,10 +202,9 @@ export const ChatPanel = memo(function ChatPanel({
           <div className="space-y-3 max-w-3xl mx-auto">
             {blocks.map((block, i) => {
               if (block.kind === "text") {
-                const lastText =
-                  i === blocks.length - 1 &&
-                  !block.frozen &&
-                  !completedStreams.has(block.stream_id);
+                const isLastBlock = i === blocks.length - 1;
+                const showCursor =
+                  isLastBlock && !completedStreams.has(block.stream_id);
                 return (
                   <div
                     key={`t-${i}`}
@@ -218,10 +217,10 @@ export const ChatPanel = memo(function ChatPanel({
                   >
                     <StreamingMessage
                       text={block.content}
-                      animate={lastText}
+                      animate={isLastBlock}
                     />
-                    {lastText && (
-                      <span className="inline-block w-0.5 h-[1em] bg-primary ml-0.5 animate-pulse align-text-bottom" />
+                    {showCursor && (
+                      <span className="inline-block w-0.5 h-[1em] bg-primary ml-0.5 animate-blink align-text-bottom" />
                     )}
                   </div>
                 );
