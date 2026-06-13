@@ -40,16 +40,16 @@ graph TB
     WS -->|ServerMessage| SOCKET
     SOCKET -->|raw messages| RAF
     RAF -->|batched per frame| PAGE
-    PAGE -->|TraceEvent[]| TL
-    PAGE -->|TraceEvent[]| CHAT
-    PAGE -->|TraceEvent[]| CI
+    PAGE -->|"TraceEvent[]"| TL
+    PAGE -->|"TraceEvent[]"| CHAT
+    PAGE -->|"TraceEvent[]"| CI
     PAGE -->|metrics| SB
     PAGE -->|USER_MESSAGE| SOCKET
     SOCKET -->|USER_MESSAGE| WS
     PAGE -->|GET /reset| HTTP
     CI -->|requestDiff| DIFF_ENGINE
     DIFF_ENGINE -->|postMessage| DIFF_WORKER
-    DIFF_WORKER -->|DiffNode[]| DIFF_ENGINE
+    DIFF_WORKER -->|"DiffNode[]"| DIFF_ENGINE
     DIFF_ENGINE -->|Promise| CI
 ```
 

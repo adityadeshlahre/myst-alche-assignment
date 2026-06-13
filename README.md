@@ -1,8 +1,19 @@
 # Agent Console
 
 **Live**: [https://myst-alche-assignment.vercel.app](https://myst-alche-assignment.vercel.app)
+**Demo**: [https://youtu.be/dn9QQqTY6Vw](https://youtu.be/dn9QQqTY6Vw)
 
 Next.js 16 (App Router) + React 19 + Tailwind CSS v4 observability console for the Alchemyst mock agent backend. Connects via WebSocket, renders streaming AI responses with mid-stream tool call interruptions, and survives chaos mode.
+
+## Screenshots
+
+| Streaming Response | Context Inspector |
+|---|---|
+| ![Streaming](./streamIngImage.png) | ![Context Inspector](./contextInspec.png) |
+
+| Trace Timeline (1) | Trace Timeline (2) |
+|---|---|
+| ![Trace Timeline](./traceTimeLine1.png) | ![Trace Timeline](./traceTimeLine2.png) |
 
 ## System Architecture
 
@@ -42,16 +53,16 @@ graph TB
     WS -->|ServerMessage| SOCKET
     SOCKET -->|raw messages| RAF
     RAF -->|batched per frame| PAGE
-    PAGE -->|TraceEvent[]| TL
-    PAGE -->|TraceEvent[]| CHAT
-    PAGE -->|TraceEvent[]| CI
+    PAGE -->|"TraceEvent[]"| TL
+    PAGE -->|"TraceEvent[]"| CHAT
+    PAGE -->|"TraceEvent[]"| CI
     PAGE -->|metrics| SB
     PAGE -->|USER_MESSAGE| SOCKET
     SOCKET -->|USER_MESSAGE| WS
     PAGE -->|GET /reset| HTTP
     CI -->|requestDiff| DIFF_ENGINE
     DIFF_ENGINE -->|postMessage| DIFF_WORKER
-    DIFF_WORKER -->|DiffNode[]| DIFF_ENGINE
+    DIFF_WORKER -->|"DiffNode[]"| DIFF_ENGINE
     DIFF_ENGINE -->|Promise| CI
 ```
 
