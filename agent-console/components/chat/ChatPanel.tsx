@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo, memo } from "react";
 import type { TraceEvent } from "@/lib/ws/types";
+import { StreamingMessage } from "@/components/chat/StreamingMessage";
 
 interface TextBlock {
   kind: "text";
@@ -110,7 +111,7 @@ const QUICK_TRIGGERS = [
   { label: "Long", msg: "long detailed document" },
 ];
 
-export function ChatPanel({
+export const ChatPanel = memo(function ChatPanel({
   events,
   connectionState,
   highlightedId,
@@ -127,7 +128,14 @@ export function ChatPanel({
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const blocks = buildBlocks(events);
+  const blocks = useMemo(() => buildBlocks(events), [events]);
+  const completedStreams = useMemo(() => {
+    const s = new Set<string>();
+    for (const ev of events) {
+      if (ev.type === "STREAM_END" && ev.stream_id) s.add(ev.stream_id);
+    }
+    return s;
+  }, [events]);
   const isConnected = connectionState === "connected";
   const hasMessages = blocks.length > 0;
 
@@ -197,11 +205,7 @@ export function ChatPanel({
                 const lastText =
                   i === blocks.length - 1 &&
                   !block.frozen &&
-                  !events.some(
-                    (e) =>
-                      e.type === "STREAM_END" &&
-                      e.stream_id === block.stream_id,
-                  );
+                  !completedStreams.has(block.stream_id);
                 return (
                   <div
                     key={`t-${i}`}
@@ -212,7 +216,10 @@ export function ChatPanel({
                         : ""
                     }`}
                   >
-                    {block.content}
+                    <StreamingMessage
+                      text={block.content}
+                      animate={lastText}
+                    />
                     {lastText && (
                       <span className="inline-block w-0.5 h-[1em] bg-primary ml-0.5 animate-pulse align-text-bottom" />
                     )}
@@ -317,4 +324,4 @@ export function ChatPanel({
       </form>
     </div>
   );
-}
+});
